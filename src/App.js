@@ -10,6 +10,7 @@ import {
 import ChartPage from './pages/ChartPage.js';
 import TablePage from './pages/TablePage.js';
 import HomePage from './pages/HomePage.js';
+import CollectorRegisterPage from './pages/CollectorRegisterPage.js';
 
 const { Title } = Typography;
 const { Header, Content, Footer, Sider } = Layout;
@@ -27,6 +28,8 @@ const App = () => {
         return <ChartPage />;
       case 'table':
         return <TablePage />;
+      case 'collector':
+        return <CollectorRegisterPage />;
       case 'home':
       default:
         return <HomePage />;
@@ -62,6 +65,9 @@ const App = () => {
           </Menu.Item>
           <Menu.Item key="table" icon={<TableOutlined />}>
             Tabelas
+          </Menu.Item>
+          <Menu.Item key="collector" icon={<TableOutlined />}>
+            Cadastro Coletor
           </Menu.Item>
         </Menu>
       </Sider>
