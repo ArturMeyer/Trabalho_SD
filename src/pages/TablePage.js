@@ -1,48 +1,80 @@
 // pages/TablePage.js
 import React, { useEffect, useState } from 'react';
 import TableComponent from '../components/TableComponent.js';
+import { useSensorData } from '../SensorDataContext.js';
 
 const TablePage = () => {
-  const [data, setData] = useState([]);
+  const { sensorData, addSensorData } = useSensorData();
+  const [x, setX] = useState()
 
-  function generateSensorData() {
-    const id_coletor = Math.floor(Math.random() * 1000);
-    const id_sensor = Math.floor(Math.random() * 1000);
-    const tipo_sensor = ['Temperatura'];
-    const valor_sensor = Math.random() * 100;
-    const timestamp = new Date().toISOString();
-    const key = `${id_coletor}_${id_sensor}_${timestamp}`;
+  function generateSensorData(id_sensor) {
+    const tipo_sensor = 'Temperatura';
+    const valor = Math.random() * 100;
+    const data = new Date().toISOString();
 
-    return { id_coletor, id_sensor, tipo_sensor, valor_sensor, timestamp, key };
+    return {
+      id_sensor,
+      tipo: tipo_sensor,
+      valores: [
+        {
+          valor,
+          data,
+        },
+      ],
+    };
   }
 
-  function generateColetorData() {
-    const id_coletor = Math.floor(Math.random() * 1000);
+  function generateColetorData(id_coletor) {
     const data_inicio = new Date().toISOString();
     const local = 'Sala de Controle';
+    const status = 'Online'
     const data_fim = null;
+    const sensores = Array.from({ length: 3 }, (_, index) => generateSensorData(index));
 
-    return { id_coletor, data_inicio, local, data_fim };
-  }
-
-  function generateSensorTypeData() {
-    const sensor_type = ['Temperatura'];
-    const unidade_medida = '°C';
-
-    return { sensor_type, unidade_medida };
+    return {
+      id_coletor,
+      data_inicio,
+      local,
+      data_fim,
+      sensores,
+      status
+    };
   }
 
   useEffect(() => {
-    const sensorData = generateSensorData();
-    const coletorData = generateColetorData();
-    const sensorTypeData = generateSensorTypeData();
+    // Inicialize a base de dados fixa
+    if(sensorData.length == 0){
+      const initialData = Array.from({ length: 3 }, (_, index) => generateColetorData(index));
+      addSensorData(initialData);
+    }
 
-    setData((prevData) => [...prevData, { ...sensorData, ...coletorData, ...sensorTypeData }]);
-  }, [data]);
+    const interval = setInterval(() => {
+      // Percorra cada coletor
+      for (let coletor of sensorData) {
+        // Percorra cada sensor do coletor
+        for (let sensor of coletor.sensores) {
+          // Crie o novo elemento com valor aleatório e data atual
+          const novoElemento = {
+            valor: Math.random() * 100,
+            data: new Date().toISOString(),
+          };
+          // Adicione o novo elemento na lista de valores do sensor
+          setX(novoElemento)
+          sensor.valores.push(novoElemento);
+        }
+        
+      }
+      // Atualize os dados do sensor
+      addSensorData(sensorData);
+    }, 2000);
+
+    // Limpe o intervalo quando o componente for desmontado
+    return () => clearInterval(interval);
+  }, [sensorData, x]);
 
   return (
     <div>
-      <TableComponent data={data} />
+      <TableComponent data={sensorData} />
     </div>
   );
 };
