@@ -1,8 +1,102 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Descriptions, Spin } from 'antd';
 import { useParams } from 'react-router-dom';
 import * as d3 from 'd3';
 import { useSensorData } from '../SensorDataContext';
+
+
+const Chart = ({ sensorId, sensorChartData }) => {
+  const chartRef = useRef(null);
+  const [localSensorChartData, setLocalSensorChartData] = useState(sensorChartData);
+
+  useEffect(() => {
+    setLocalSensorChartData(sensorChartData);
+  }, [sensorChartData]);
+
+  useEffect(() => {
+    const createChart = () => {
+      const margin = { top: 20, right: 30, bottom: 30, left: 40 };
+      const width = 928;
+      const height = 500;
+
+      if (!localSensorChartData[sensorId]) {
+        return;
+      }
+
+      const data = localSensorChartData[sensorId]?.map((d) => ({
+        date: new Date(d.data),
+        temperature: convertToFahrenheit(d.valor), // Converte para Celsius
+      })) || [];
+
+      const x = d3.scaleUtc()
+        .domain(d3.extent(data, d => d.date))
+        .range([margin.left, width - margin.right]);
+
+      const y = d3.scaleLinear()
+        .domain(d3.extent(data, d => d.temperature)).nice()
+        .range([height - margin.bottom, margin.top]);
+
+      const color = d3.scaleSequential(y.domain(), d3.interpolateTurbo);
+
+      const line = d3.line()
+        .curve(d3.curveStep)
+        .defined(d => !isNaN(d.temperature))
+        .x(d => x(d.date))
+        .y(d => y(d.temperature));
+
+      const svg = d3.create("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .attr("viewBox", [0, 0, width, height])
+        .attr("style", "max-width: 100%; height: auto;");
+
+      svg.append("g")
+        .attr("transform", `translate(0,${height - margin.bottom})`)
+        .call(d3.axisBottom(x).ticks(width / 80).tickSizeOuter(0))
+        .call(g => g.select(".domain").remove());
+
+      svg.append("g")
+        .attr("transform", `translate(${margin.left},0)`)
+        .call(d3.axisLeft(y))
+        .call(g => g.select(".domain").remove())
+        .call(g => g.select(".tick:last-of-type text").append("tspan").text("°C"));
+
+      const gradientId = `gradient-${sensorId}`;
+
+      svg.append("linearGradient")
+        .attr("id", gradientId)
+        .attr("gradientUnits", "userSpaceOnUse")
+        .attr("x1", 0)
+        .attr("y1", height - margin.bottom)
+        .attr("x2", 0)
+        .attr("y2", margin.top)
+        .selectAll("stop")
+        .data(d3.ticks(0, 1, 10))
+        .join("stop")
+        .attr("offset", d => d)
+        .attr("stop-color", color.interpolator());
+
+      svg.append("path")
+        .datum(data)
+        .attr("fill", "none")
+        .attr("stroke", `url(#${gradientId})`)
+        .attr("stroke-width", 1.5)
+        .attr("stroke-linejoin", "round")
+        .attr("stroke-linecap", "round")
+        .attr("d", line);
+
+      chartRef.current.innerHTML = '';
+      chartRef.current.appendChild(svg.node());
+    };
+
+    createChart();
+  }, [sensorId, localSensorChartData]);
+
+  // Função para converter Fahrenheit para Celsius
+  const convertToFahrenheit = (fahrenheit) => (fahrenheit - 32) * 5 / 9;
+
+  return <div ref={chartRef}></div>;
+};
 
 const CollectorPage = () => {
   const { id } = useParams();
@@ -13,7 +107,6 @@ const CollectorPage = () => {
   const [sensorChartData, setSensorChartData] = useState({});
 
   useEffect(() => {
-    // Inicialize o estado com os dados de todos os sensores
     if (collector && collector.sensores.length > 0) {
       const initialData = {};
       collector.sensores.forEach((sensor) => {
@@ -24,14 +117,12 @@ const CollectorPage = () => {
   }, [collector]);
 
   useEffect(() => {
-    // Atualize o gráfico do sensor correspondente a cada 2000 milissegundos
-    const intervalId = setInterval(async () => {
-      // Para fins de demonstração, vamos gerar dados fictícios para cada sensor
+    const intervalId = setInterval(() => {
       if (collector && collector.sensores.length > 0) {
         const newData = { ...sensorChartData };
         collector.sensores.forEach((sensor) => {
           const newDataPoint = {
-            valor: Math.random() * 100, // Substitua isso pelo valor real do sensor
+            valor: Math.random() * 100,
             data: new Date().toISOString(),
           };
           newData[sensor.id_sensor] = [...newData[sensor.id_sensor], newDataPoint];
@@ -40,76 +131,8 @@ const CollectorPage = () => {
       }
     }, 2000);
 
-    // Limpe o intervalo quando o componente é desmontado
     return () => clearInterval(intervalId);
   }, [sensorChartData, collector]);
-
-const drawChart = (sensorId) => {
-  const margin = { top: 20, right: 20, bottom: 30, left: 50 };
-  const width = 600 - margin.left - margin.right;
-  const height = 400 - margin.top - margin.bottom;
-
-  d3.select(`#sensor-chart-${sensorId}`).selectAll('*').remove();
-
-  // Verifique se sensorChartData[sensorId] está definido
-  if (!sensorChartData[sensorId]) {
-    return;
-  }
-
-  const svg = d3
-    .select(`#sensor-chart-${sensorId}`)
-    .append('svg')
-    .attr('width', width + margin.left + margin.right)
-    .attr('height', height + margin.top + margin.bottom)
-    .append('g')
-    .attr('transform', `translate(${margin.left},${margin.top})`);
-
-  const parseTime = d3.timeParse('%Y-%m-%dT%H:%M:%S.%LZ');
-  const formatDate = d3.timeFormat('%H:%M:%S');
-
-  // Aqui adicionamos uma verificação de nulidade para sensorChartData[sensorId]
-  const data = sensorChartData[sensorId]?.map((d) => ({
-    data: parseTime(d.data),
-    temperatura: d.valor,
-  })) || [];
-
-  const xScale = d3
-    .scaleTime()
-    .domain(d3.extent(data, (d) => d.data))
-    .range([0, width]);
-
-  const yScale = d3
-    .scaleLinear()
-    .domain([0, d3.max(data, (d) => d.temperatura)])
-    .range([height, 0]);
-
-  const line = d3
-    .line()
-    .x((d) => xScale(d.data))
-    .y((d) => yScale(d.temperatura));
-
-  // Adicione a linha ao gráfico
-  svg.append('path')
-    .data([data])
-    .attr('d', line)
-    .attr('stroke', 'black')
-    .attr('stroke-width', 2);
-
-  // Adicione rótulos ao gráfico, se necessário
-  svg.append('text')
-    .attr('transform', `translate(${width / 2},${height + margin.top + 10})`)
-    .style('text-anchor', 'middle')
-    .text('Horário');
-
-  svg.append('text')
-    .attr('transform', 'rotate(-90)')
-    .attr('y', 0 - margin.left)
-    .attr('x', 0 - height / 2)
-    .attr('dy', '1em')
-    .style('text-anchor', 'middle')
-    .text(`Sensor ${sensorId} - Temperatura`);
-};
-  
 
   if (!collector) {
     return <div>Coletor não encontrado</div>;
@@ -130,7 +153,7 @@ const drawChart = (sensorId) => {
           <div id={`sensor-chart-${sensor.id_sensor}`}>
             {sensorChartData[sensor.id_sensor]?.length === 0 && <Spin size="large" />}
           </div>
-          {drawChart(sensor.id_sensor)}
+          <Chart sensorId={sensor.id_sensor} sensorChartData={sensorChartData} />
         </div>
       ))}
     </div>

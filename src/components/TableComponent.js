@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Button, Input, Space, Table, Divider, Tag, Modal } from 'antd';
+import { Button, Input, Space, Table, Divider, Tag, Modal, Select } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import Highlighter from 'react-highlight-words';
 import { useSensorData } from '../SensorDataContext.js';
@@ -44,6 +44,39 @@ const TableComponent = ({ data }) => {
     // You need to implement the logic to update the location in your data
     console.log(`Updating location of collector ${editCollectorId} to ${newLocation}`);
     setEditCollectorModalVisible(false);
+  };
+
+  const [addSensorModalVisible, setAddSensorModalVisible] = useState(false);
+  const [sensorForm, setSensorForm] = useState({
+    tipo: '',
+    unidade: '',
+    id_sensor: null,
+  });
+  const [sensorFormErrors, setSensorFormErrors] = useState({});
+
+  const handleAddSensor = () => {
+    const errors = validateSensorForm(sensorForm);
+    if (Object.keys(errors).length === 0) {
+      // Lógica para adicionar o sensor
+      console.log('Adicionando sensor:', sensorForm);
+      setAddSensorModalVisible(false);
+    } else {
+      setSensorFormErrors(errors);
+    }
+  };
+
+  const validateSensorForm = (values) => {
+    const errors = {};
+    if (!values.tipo) {
+      errors.tipo = 'Por favor, selecione o tipo do sensor.';
+    }
+    if (!values.unidade) {
+      errors.unidade = 'Por favor, selecione a unidade do sensor.';
+    }
+    if (values.id_sensor === null || isNaN(values.id_sensor) || values.id_sensor <= 0) {
+      errors.id_sensor = 'Por favor, insira um ID de sensor válido.';
+    }
+    return errors;
   };
 
   const showUpdateModal = (sensor) => {
@@ -173,25 +206,25 @@ const TableComponent = ({ data }) => {
 
   const renderChart = (sensor, record) => {
     const chartContainer = d3.select(`#sensor-chart-${sensor.id_sensor}-${record.id_coletor}`);
-  
+
     // Clear previous content in the chart container
     chartContainer.selectAll('*').remove();
-  
+
     // Example: Create a simple bar chart
     const svg = chartContainer.append('svg')
       .attr('width', 100)
       .attr('height', 50);
-  
+
     const data = sensor.valores.map((entry) => entry.valor);
-  
+
     const xScale = d3.scaleLinear()
       .domain([0, data.length - 1])
       .range([0, 100]);
-  
+
     const yScale = d3.scaleLinear()
       .domain([0, d3.max(data)])
       .range([50, 0]);
-  
+
     svg.selectAll('rect')
       .data(data)
       .enter()
@@ -225,12 +258,17 @@ const TableComponent = ({ data }) => {
     },
     {
       key: 'edit',
-      title: 'Atualizar',
+      title: 'Ações',
       dataIndex: 'edit',
       render: (_, record) => (
-        <Button type="primary" onClick={() => showEditModal(record)}>
-          Atualizar
-        </Button>
+        <div>
+          <Button type="primary" onClick={() => showEditModal(record)}>
+            Atualizar
+          </Button>
+          <Button type="primary" style={{ marginLeft: 10 }} onClick={() => setAddSensorModalVisible(true)}>
+            Adicionar Sensor
+          </Button>
+        </div>
       ),
     },
     {
@@ -274,7 +312,7 @@ const TableComponent = ({ data }) => {
           return <div id={`sensor-chart-${sensor.id_sensor}-${record.id_coletor}`} style={{ width: '100px', height: '50px' }} />;
         },
       }
-      
+
     ];
 
     return (
@@ -308,6 +346,55 @@ const TableComponent = ({ data }) => {
         onConfirm={handleEditLocation}
         existingLocations={allLocations}
       />
+      {/* Novo Pop-up para Adicionar Sensor */}
+      <Modal
+        title="Adicionar Sensor"
+        visible={addSensorModalVisible}
+        onOk={handleAddSensor}
+        onCancel={() => {
+          setAddSensorModalVisible(false);
+          setSensorForm({
+            tipo: '',
+            unidade: '',
+            id_sensor: null,
+          });
+          setSensorFormErrors({});
+        }}
+      >
+        <div>
+          <label>Tipo Sensor:</label>
+          <Select
+            style={{ width: '100%' }}
+            value={sensorForm.tipo}
+            onChange={(value) => setSensorForm({ ...sensorForm, tipo: value })}
+          >
+            {/* Opções do select para tipo de sensor */}
+          </Select>
+          {sensorFormErrors.tipo && <div style={{ color: 'red' }}>{sensorFormErrors.tipo}</div>}
+        </div>
+        <div>
+          <label>Unidade:</label>
+          <Select
+            style={{ width: '100%' }}
+            value={sensorForm.unidade}
+            onChange={(value) => setSensorForm({ ...sensorForm, unidade: value })}
+          >
+            {/* Opções do select para unidade */}
+          </Select>
+          {sensorFormErrors.unidade && <div style={{ color: 'red' }}>{sensorFormErrors.unidade}</div>}
+        </div>
+        <div>
+          <label>ID Sensor:</label>
+          <Input
+            type="number"
+            value={sensorForm.id_sensor}
+            onChange={(e) => setSensorForm({ ...sensorForm, id_sensor: e.target.valueAsNumber })}
+          />
+          {sensorFormErrors.id_sensor && (
+            <div style={{ color: 'red' }}>{sensorFormErrors.id_sensor}</div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };
