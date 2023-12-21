@@ -42,35 +42,28 @@ const TablePage = () => {
   }
 
   useEffect(() => {
-    // Inicialize a base de dados fixa
-    if(sensorData.length == 0){
-      const initialData = Array.from({ length: 3 }, (_, index) => generateColetorData(index));
-      addSensorData(initialData);
-    }
+    const fetchData = async () => {
+      try {
+        // Substitua a URL abaixo pela URL real da sua API
+        const response = await fetch('http://10.5.16.131:3000/collector');
+        const data = await response.json();
 
-    const interval = setInterval(() => {
-      // Percorra cada coletor
-      for (let coletor of sensorData) {
-        // Percorra cada sensor do coletor
-        for (let sensor of coletor.sensores) {
-          // Crie o novo elemento com valor aleatório e data atual
-          const novoElemento = {
-            valor: Math.random() * 100,
-            data: new Date().toISOString(),
-          };
-          // Adicione o novo elemento na lista de valores do sensor
-          setX(novoElemento)
-          sensor.valores.push(novoElemento);
-        }
-        
+        // Atualize os dados do sensor com os dados obtidos da API
+        addSensorData(data);
+      } catch (error) {
+        console.error('Erro ao buscar dados da API:', error);
       }
-      // Atualize os dados do sensor
-      addSensorData(sensorData);
-    }, 2000);
+    };
+
+    // Chame a função fetchData ao montar o componente
+    fetchData();
+
+    // Configure um intervalo para atualizar os dados a cada 2000 milissegundos
+    const interval = setInterval(fetchData, 2000);
 
     // Limpe o intervalo quando o componente for desmontado
     return () => clearInterval(interval);
-  }, [sensorData, x]);
+  }, [sensorData]);
 
   return (
     <div>
