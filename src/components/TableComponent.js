@@ -42,12 +42,35 @@ const TableComponent = ({ data }) => {
   const handleEditLocation = (newLocation) => {
     // Update the location of the collector with editCollectorId
     // You need to implement the logic to update the location in your data
-    console.log(`Updating location of collector ${editCollectorId} to ${newLocation}`);
-    setEditCollectorModalVisible(false);
+    //console.log(`Updating location of collector ${editCollectorId} to ${newLocation}`);
+    try {
+      // Substitua a URL abaixo pela URL real da sua API e o método HTTP apropriado (por exemplo, POST)
+      const response = fetch(`http://10.5.16.131:3000/collector/${editCollectorId}`, {
+        method: 'PUT', // ou 'POST' dependendo da sua API
+        headers: {
+          'Content-Type': 'application/json',
+          // Inclua quaisquer cabeçalhos de autenticação ou outros necessários
+        },
+        body: JSON.stringify({ location: newLocation }),
+      });
+  
+      if (response.ok) {
+        console.log(`Location of collector ${editCollectorId} updated successfully to ${newLocation}`);
+        setEditCollectorModalVisible(false);
+        // Adicione qualquer lógica adicional que você precise após a atualização bem-sucedida
+      } else {
+        console.error(`Failed to update location. Status: ${response.status}`);
+        // Adicione lógica para lidar com falhas na atualização
+      }
+    } catch (error) {
+      console.error('Error updating location:', error);
+      // Adicione lógica para lidar com erros de rede ou outros erros
+    }
   };
 
   const [addSensorModalVisible, setAddSensorModalVisible] = useState(false);
   const [sensorForm, setSensorForm] = useState({
+    id_coletor: editCollectorId,
     tipo: '',
     unidade: '',
     id_sensor: null,
@@ -57,9 +80,29 @@ const TableComponent = ({ data }) => {
   const handleAddSensor = () => {
     const errors = validateSensorForm(sensorForm);
     if (Object.keys(errors).length === 0) {
-      // Lógica para adicionar o sensor
-      console.log('Adicionando sensor:', sensorForm);
-      setAddSensorModalVisible(false);
+      try {
+        // Substitua a URL abaixo pela URL real da sua API e o método HTTP apropriado (por exemplo, POST)
+        const response = fetch('http://10.5.16.131:3000/sensor/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            // Inclua quaisquer cabeçalhos de autenticação ou outros necessários
+          },
+          body: JSON.stringify(sensorForm),
+        });
+  
+        if (response.ok) {
+          console.log('Sensor adicionado com sucesso:', sensorForm);
+          // Adicione qualquer lógica adicional que você precise após a adição bem-sucedida
+          setAddSensorModalVisible(false);
+        } else {
+          console.error(`Falha ao adicionar sensor. Status: ${response.status}`);
+          // Adicione lógica para lidar com falhas na adição
+        }
+      } catch (error) {
+        console.error('Erro ao adicionar sensor:', error);
+        // Adicione lógica para lidar com erros de rede ou outros erros
+      }
     } else {
       setSensorFormErrors(errors);
     }
